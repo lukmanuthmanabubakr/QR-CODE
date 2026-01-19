@@ -1,277 +1,182 @@
-# Secure QR-Based Donation Backend Guide (Node.js – JavaScript)
+# Static Donation QR Backend Guide (Node.js – JavaScript)
 
-This document explains **how to build a secure backend first** for a QR-based donation / fundraising system using **Node.js (JavaScript, not TypeScript)**.
+This document explains **the simplest and safest** way to build a donation QR solution for a mosque/charity.
 
-The focus of this guide is **security**. The system is designed so that **no outsider, admin, or attacker can change the destination account number or hijack funds**.
+✅ **What you are building**
 
----
+* A **static QR code** that contains the donation bank details as **plain text**.
+* When people scan it, they **see the bank name, account number, and account name**.
+* They then open their bank app and **transfer manually** (amount + PIN/OTP).
 
-## 1. Core Security Principle (Read This First)
+❌ **What you are NOT building**
 
-> **The client must NEVER control where money goes.**
+* No bank app integration
+* No automatic transfers
+* No collecting credentials
+* No payment provider needed
+* No website required
 
-All sensitive payment details (bank account, merchant ID, provider keys) must live **only on the backend**.
-
-The QR code and frontend **must never contain editable bank details**.
-
----
-
-## 2. What the Backend Is Allowed to Do
-
-The backend is responsible for:
-
-* Creating donation intents
-* Locking the recipient account permanently
-* Generating immutable payment references
-* Returning a payment URL
-* Verifying payment webhooks
-* Updating payment status
-
-The backend **does NOT**:
-
-* Accept bank account numbers from users
-* Trust frontend-submitted payment details
-* Complete transfers automatically
+This approach is reliable, works offline after you print the QR, and cannot “crash” when many people scan it, because scanning does not hit your server.
 
 ---
 
-## 3. High-Level Secure Flow
+## 1. Target User Experience
 
-1. Admin creates a campaign (one-time setup)
-2. Backend stores the campaign’s bank details securely
-3. User requests to donate
-4. Backend creates a donation intent
-5. Backend generates a payment link using stored bank details
-6. QR code encodes only the payment URL
-7. User confirms payment in bank app
-8. Payment provider sends webhook
-9. Backend verifies and updates status
+1. Mosque prints the QR code on posters / flyers
+2. Donor scans the QR code
+3. Donor sees:
 
----
+   * Bank name
+   * Account number
+   * Account name
+   * Optional narration/reference suggestion
+4. Donor copies the account number (or memorises it) and sends money in their bank app
 
-## 4. Technology Stack
-
-* Node.js
-* Express.js
-* MongoDB or PostgreSQL
-* Payment provider: Paystack / Flutterwave
-* Environment variables for secrets
+That’s it.
 
 ---
 
-## 5. Project Structure (Recommended)
+## 2. Core Security Principle
+
+> The QR code must contain only **public donation details**, never secrets.
+
+Allowed inside QR:
+
+* Bank name
+* Account number
+* Account name
+* Optional “Narration: RAMADAN DONATION”
+
+Never inside QR:
+
+* Paystack/Flutterwave keys
+* Admin tokens
+* Personal donor data
+* Anything that can be abused
+
+---
+
+## 3. Why This Works for Everyone
+
+* Every phone can scan a QR and display text
+* No dependency on bank deep links
+* No dependency on Paystack/Flutterwave
+* No dependency on internet
+
+**Important:** This does not auto-open bank apps. It simply makes it easy for donors to get the correct bank details without typing.
+
+---
+
+## 4. Minimal Backend Responsibilities
+
+The backend is only needed to:
+
+* Store donation account details (optional)
+* Generate the QR code image (PNG)
+* Serve the QR for download/printing
+
+After you generate the QR once, you can print it and you are done.
+
+---
+
+## 5. Recommended Project Structure
 
 ```
 src/
  ├─ controllers/
  ├─ routes/
  ├─ services/
- ├─ models/
- ├─ webhooks/
- ├─ middlewares/
  ├─ utils/
  ├─ app.js
  └─ server.js
 ```
 
-Keep it simple and auditable.
+You do **not** need models/webhooks for the static QR MVP.
 
 ---
 
-## 6. Database Models (Security-Focused)
+## 6. Environment Variables (.env)
 
-### Campaign (Immutable Bank Details)
+If you want the bank details stored in env (simple MVP):
 
-```js
-{
-  _id,
-  name,
-  description,
-  paymentProvider,
-  providerAccountId, // stored once, never edited via public API
-  isActive,
-  createdAt
-}
+```
+PORT=5000
+NODE_ENV=development
+
+DONATION_BANK_NAME=GTBank
+DONATION_ACCOUNT_NUMBER=0123456789
+DONATION_ACCOUNT_NAME=MSSN Mosque Donations
+DONATION_NARRATION=RAMADAN DONATION
 ```
 
-**Important rules:**
+Security note:
 
-* `providerAccountId` is set **once**
-* No public endpoint updates this field
-* Changes require manual admin action
+* These are not secrets like API keys, but still treat them as configuration.
+* Keep `.env` out of GitHub.
 
 ---
 
-### Donation
+## 7. QR Payload Format (Plain Text)
 
-```js
-{
-  _id,
-  campaignId,
-  amount,
-  currency,
-  reference,
-  status, // pending | success | failed
-  providerResponse,
-  createdAt
-}
+Your QR should encode a clean text block like:
+
 ```
+Bank: GTBank
+Account Number: 0123456789
+Account Name: MSSN Mosque Donations
+Narration: RAMADAN DONATION
+```
+
+Tips:
+
+* Keep it short and readable
+* Use consistent labels
+* Avoid emojis in the QR payload (some scanners display them weirdly)
 
 ---
 
-## 7. Step 1: Create Donation Intent (Critical Endpoint)
+## 8. Endpoints (Backend Only)
 
-### Route
+### A) Get donation details (optional)
 
-```
-POST /api/donations
-```
+* `GET /api/donation-details`
+* Returns the details as JSON
 
-### Request Body (Minimal)
+### B) Generate / download the QR code
 
-```json
-{
-  "campaignId": "abc123",
-  "amount": 5000
-}
-```
+* `GET /api/donation-qr`
+* Returns a PNG image
 
-### Backend Validation Steps
-
-1. Validate campaign exists and is active
-2. Validate amount (min/max)
-3. Fetch campaign bank details from DB
-4. Generate unique reference
-5. Save donation with `pending` status
-6. Generate payment link using stored account
-
-**The client never sends bank details.**
+You can also generate the QR once and save it as a file for printing.
 
 ---
 
-## 8. Secure Reference Generation
+## 9. Reliability (Why It Won’t Crash)
 
-```js
-function generateReference() {
-  return `DON-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
-}
-```
+* Once printed, scanning happens on the user’s phone
+* No request is made to your server during scanning (because QR contains text)
+* Your server is only used when you generate or download the QR
 
-Rules:
-
-* Generated only on backend
-* Stored before payment initiation
-* Used to match webhook events
+So even if 10,000 people scan the same printed QR, nothing will crash.
 
 ---
 
-## 9. Payment Service Layer (Isolation)
+## 10. Final Checklist
 
-Create a service file:
-
-```js
-// services/paymentService.js
-async function createPaymentLink({ amount, reference, campaign }) {
-  // Uses campaign.providerAccountId
-  // Calls Paystack / Flutterwave API
-  // Returns hosted payment URL
-}
-
-module.exports = { createPaymentLink };
-```
-
-Controllers must **never** talk directly to providers.
+* [ ] Bank details confirmed and correct
+* [ ] QR payload is readable
+* [ ] QR generated in high resolution (print-friendly)
+* [ ] QR tested with multiple phones (Android + iPhone)
+* [ ] Poster includes a short instruction: “Scan to get account details”
 
 ---
 
-## 10. QR Code Security Rule
+## 11. Next Step
 
-The QR code must encode **ONLY**:
+If you want, we can add:
 
-```
-https://yourdomain.com/pay/{donationId}
-```
+* Multiple accounts (different banks) in one QR payload
+* Separate QR per campaign (Ramadan / Zakat / Building Fund)
+* A tiny admin-protected endpoint to update donation details (optional)
 
-It must NOT contain:
-
-* Account numbers
-* Amounts
-* Provider IDs
-* Bank names
-
-All sensitive data is fetched server-side.
-
----
-
-## 11. Webhook Handling (High Security)
-
-### Route
-
-```
-POST /api/webhooks/payment
-```
-
-### Mandatory Checks
-
-* Verify provider signature
-* Match reference with stored donation
-* Confirm amount matches
-* Update status once (idempotent)
-
-```js
-if (donation.status !== 'pending') return;
-```
-
-Never trust webhook payload blindly.
-
----
-
-## 12. Protection Against Fund Hijacking
-
-To prevent outsiders from changing account numbers:
-
-* No public API updates campaign payment details
-* Campaign payment data stored server-side only
-* Environment variables for provider keys
-* Role-based admin access
-* Audit logs for admin actions
-
----
-
-## 13. Environment Variable Usage
-
-```
-PAYSTACK_SECRET_KEY=sk_live_xxx
-FLUTTERWAVE_SECRET_KEY=flw_live_xxx
-```
-
-Never expose these to frontend.
-
----
-
-## 14. Backend Is Complete When
-
-* Bank details are never sent from client
-* Payment links are generated server-side
-* Webhooks are verified
-* References are immutable
-* Donation status cannot be replayed
-
----
-
-## 15. Final Engineering Rule
-
-> If a user can change the destination account from the frontend, the system is broken.
-
-Security over convenience. Always.
-
----
-
-Next steps if needed:
-
-* Real Paystack JavaScript integration
-* Admin authentication design
-* Rate limiting & abuse prevention
-* Production deployment checklist
-
-Say what you want to add next.
+Tell me what you want next.
