@@ -3,11 +3,10 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const path = require("path"); // ADD THIS
 const donationDetailsRoutes = require("./routes/donationDetailsRoutes");
 const donationQrRoutes = require("./routes/donationQrRoutes");
 const donatePageRoutes = require("./routes/donatePageRoutes");
-
-
 
 const app = express();
 
@@ -17,10 +16,12 @@ app.use(helmet());
 
 app.use(
   cors({
-    origin: true, // TODO: replace with your frontend domain later
+    origin: true,
     credentials: true,
   })
 );
+
+app.use('/static', express.static(path.join(__dirname, 'public')));
 
 app.use(express.json({ limit: "1mb" }));
 
@@ -36,11 +37,10 @@ app.use(
 app.get("/", (req, res) => {
   res.status(200).json({ success: true, status: "ok" });
 });
+
 app.use("/api", donationDetailsRoutes);
 app.use("/api", donationQrRoutes);
 app.use("/", donatePageRoutes);
-
-
 
 app.use((req, res) => {
   res.status(404).json({
