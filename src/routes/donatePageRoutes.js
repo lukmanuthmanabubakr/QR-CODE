@@ -30,11 +30,9 @@ router.get("/donate", (req, res) => {
   const narration = process.env.DONATION_NARRATION || "";
 
   const brandName = "MSSN FUTA Branch";
-  // Use route-based logo serving as fallback
   const logoUrl = process.env.BRAND_LOGO_URL || "";
 
-  const missing =
-    !bankName.trim() || !accountNumber.trim() || !accountName.trim();
+  const missing = !bankName.trim() || !accountNumber.trim() || !accountName.trim();
 
   const html = `<!doctype html>
 <html lang="en">
@@ -348,6 +346,11 @@ router.get("/donate", (req, res) => {
 </head>
 <body>
   <div class="container">
+    <header class="header">
+      <h1 class="brand-title">${esc(brandName)}</h1>
+      <p class="brand-subtitle">Secure Donation Portal</p>
+    </header>
+
     <div class="main-card">
       <div class="card-header">
         <h2>Bank Transfer Details</h2>
@@ -358,7 +361,7 @@ router.get("/donate", (req, res) => {
         ${missing ? `<div class="warning"> Configuration incomplete. Please contact the administrator to set up donation details.</div>` : ""}
 
         <div class="detail-group">
-          <div class="detail-item" onclick="copyField('${esc(bankName)}', 'Bank Name')">
+          <div class="detail-item" data-value="${bankName.replace(/"/g, '&quot;')}" data-label="Bank Name">
             <div class="detail-label">
               <span>Bank Name</span>
               <span class="copy-hint">Tap to copy</span>
@@ -366,7 +369,7 @@ router.get("/donate", (req, res) => {
             <div class="detail-value">${esc(bankName || "Not configured")}</div>
           </div>
 
-          <div class="detail-item" onclick="copyField('${esc(accountNumber)}', 'Account Number')">
+          <div class="detail-item" data-value="${accountNumber.replace(/"/g, '&quot;')}" data-label="Account Number">
             <div class="detail-label">
               <span>Account Number</span>
               <span class="copy-hint">Tap to copy</span>
@@ -374,7 +377,7 @@ router.get("/donate", (req, res) => {
             <div class="detail-value">${esc(accountNumber || "Not configured")}</div>
           </div>
 
-          <div class="detail-item" onclick="copyField('${esc(accountName)}', 'Account Name')">
+          <div class="detail-item" data-value="${accountName.replace(/"/g, '&quot;')}" data-label="Account Name">
             <div class="detail-label">
               <span>Account Name</span>
               <span class="copy-hint">Tap to copy</span>
@@ -383,7 +386,7 @@ router.get("/donate", (req, res) => {
           </div>
 
           ${narration && narration.trim()
-            ? `<div class="detail-item" onclick="copyField('${esc(narration.trim())}', 'Narration')">
+            ? `<div class="detail-item" data-value="${narration.trim().replace(/"/g, '&quot;')}" data-label="Narration">
                 <div class="detail-label">
                   <span>Narration</span>
                   <span class="copy-hint">Tap to copy</span>
@@ -410,26 +413,37 @@ router.get("/donate", (req, res) => {
 
   <div class="toast" id="toast">Copied successfully</div>
 
- <script>
-  async function copyText(text) {
-    if (!text || !text.trim() || text === "Not configured") {
-      showToast("Nothing to copy");
-      return false;
+  <script>
+    const toast = document.getElementById("toast");
+    let toastTimer;
+
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 2500);
     }
 
-    // 1) Best: Clipboard API (works on HTTPS + modern browsers)
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(text);
-        return true;
+    function copyToClipboard(text) {
+      if (!text || text === "Not configured") {
+        showToast("Nothing to copy");
+        return;
       }
-    } catch (e) {}
 
-    // 2) Fallback: execCommand (works on many browsers, not all)
-    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text)
+          .then(() => showToast("Copied!"))
+          .catch(() => fallbackCopy(text));
+      } else {
+        fallbackCopy(text);
+      }
+    }
+
+    function fallbackCopy(text) {
       const textarea = document.createElement("textarea");
       textarea.value = text;
-      textarea.setAttribute("readonly", "");
       textarea.style.position = "fixed";
       textarea.style.top = "0";
       textarea.style.left = "0";
@@ -437,21 +451,45 @@ router.get("/donate", (req, res) => {
       document.body.appendChild(textarea);
       textarea.focus();
       textarea.select();
-      textarea.setSelectionRange(0, textarea.value.length); // important for iOS
-      const ok = document.execCommand("copy");
+      
+      try {
+        document.execCommand("copy");
+        showToast("Copied!");
+      } catch (err) {
+        showToast("Failed to copy");
+      }
+      
       document.body.removeChild(textarea);
-      if (ok) return true;
-    } catch (e) {}
-
-    // 3) Last resort: prompt (works everywhere)
-    try {
-      window.prompt("Copy this:", text);
-      return true;
-    } catch (e) {
-      return false;
     }
-  }
-</script>
+
+    document.querySelectorAll(".detail-item").forEach(item => {
+      item.addEventListener("click", function() {
+        const value = this.getAttribute("data-value");
+        const label = this.getAttribute("data-label");
+        copyToClipboard(value);
+      });
+    });
+
+    document.getElementById("copyAll").addEventListener("click", function() {
+      const items = document.querySelectorAll(".detail-item");
+      const details = [];
+      
+      items.forEach(item => {
+        const value = item.getAttribute("data-value");
+        const label = item.getAttribute("data-label");
+        if (value && value !== "Not configured") {
+          details.push(label.toUpperCase() + ": " + value);
+        }
+      });
+
+      if (details.length > 0) {
+        const allText = details.join("\\n");
+        copyToClipboard(allText);
+      } else {
+        showToast("No details to copy");
+      }
+    });
+  </script>
 </body>
 </html>`;
 
