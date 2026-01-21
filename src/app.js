@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
-const path = require("path"); // ADD THIS
+const path = require("path");
 const donationDetailsRoutes = require("./routes/donationDetailsRoutes");
 const donationQrRoutes = require("./routes/donationQrRoutes");
 const donatePageRoutes = require("./routes/donatePageRoutes");
@@ -12,7 +12,22 @@ const app = express();
 
 app.set("trust proxy", 1);
 
-app.use(helmet());
+// UPDATE THIS PART
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        "script-src": ["'self'", "'unsafe-inline'"],
+        "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        "font-src": ["'self'", "https://fonts.gstatic.com"],
+      },
+    },
+  })
+);
+
+// Serve static files
+app.use('/static', express.static(path.join(__dirname, 'public')));
 
 app.use(
   cors({
@@ -20,8 +35,6 @@ app.use(
     credentials: true,
   })
 );
-
-app.use('/static', express.static(path.join(__dirname, 'public')));
 
 app.use(express.json({ limit: "1mb" }));
 
