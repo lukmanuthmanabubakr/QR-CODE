@@ -1,5 +1,7 @@
 const express = require("express");
 const router = express.Router();
+const path = require("path");
+const fs = require("fs");
 
 function esc(s = "") {
   return String(s)
@@ -10,19 +12,26 @@ function esc(s = "") {
     .replaceAll("'", "&#039;");
 }
 
+// Serve logo image
+router.get("/donate/logo", (req, res) => {
+  const logoPath = path.join(__dirname, "..", "assets", "mssn-logo.png");
+  
+  if (fs.existsSync(logoPath)) {
+    res.sendFile(logoPath);
+  } else {
+    res.status(404).send("Logo not found");
+  }
+});
+
 router.get("/donate", (req, res) => {
   const bankName = process.env.DONATION_BANK_NAME || "";
   const accountNumber = process.env.DONATION_ACCOUNT_NUMBER || "";
   const accountName = process.env.DONATION_ACCOUNT_NAME || "";
   const narration = process.env.DONATION_NARRATION || "";
 
-  const brandName = process.env.BRAND_NAME || "Donation";
-  const primary = process.env.BRAND_PRIMARY || "#1AAE55";
-  const bg = process.env.BRAND_BG || "#F4F7F6";
+  const brandName = "MSSN FUTA Branch";
   const logoUrl = process.env.BRAND_LOGO_URL || "";
-  const heroUrl = process.env.BRAND_HERO_URL || "";
 
-  // Basic guard: if you forgot env values, still show something clear
   const missing =
     !bankName.trim() || !accountNumber.trim() || !accountName.trim();
 
@@ -31,339 +40,451 @@ router.get("/donate", (req, res) => {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="${esc(primary)}" />
-  <title>${esc(brandName)} Donations</title>
+  <meta name="theme-color" content="#6a1b9a" />
+  <title>${esc(brandName)} | Donation Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root{
-      --primary:${esc(primary)};
-      --bg:${esc(bg)};
-      --card:#ffffff;
-      --text:#102A26;
-      --muted:#5C6F6B;
-      --border:rgba(16,42,38,.10);
-      --shadow:0 10px 30px rgba(16,42,38,.10);
-      --radius:18px;
+    :root {
+      --primary: #6a1b9a;
+      --secondary: #ffd600;
+      --deep-blue: #003366;
+      --light-blue: #0097a7;
+      --bg: #ffffff;
+      --card-bg: #f9f7fc;
+      --text: #212121;
+      --text-muted: #4a4a4a;
+      --border: rgba(106, 27, 154, 0.12);
+      --shadow: 0 4px 20px rgba(106, 27, 154, 0.08);
+      --shadow-hover: 0 8px 30px rgba(106, 27, 154, 0.15);
+      --radius: 12px;
     }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: var(--bg);
       color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
-    .wrap{
-      max-width: 520px;
+
+    .container {
+      max-width: 580px;
       margin: 0 auto;
-      padding: 18px 16px 28px;
+      padding: 32px 20px 48px;
+      flex: 1;
     }
-    .top{
-      display:flex;
-      align-items:center;
-      gap:12px;
-      margin-top: 6px;
-      margin-bottom: 14px;
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding-top: 20px;
     }
-    .logo{
-      width:44px;height:44px;
-      border-radius: 12px;
-      background: #fff;
-      display:flex;align-items:center;justify-content:center;
-      box-shadow: 0 6px 18px rgba(0,0,0,.06);
-      overflow:hidden;
-      flex: 0 0 auto;
-    }
-    .logo img{width:100%;height:100%;object-fit:contain}
-    .brand{
-      line-height:1.1;
-    }
-    .brand .name{
-      font-weight: 800;
-      letter-spacing: .2px;
-      font-size: 16px;
-      margin:0;
-    }
-    .brand .sub{
-      margin:4px 0 0;
-      color: var(--muted);
-      font-size: 13px;
-    }
-    .hero{
-      margin: 10px 0 14px;
-      border-radius: var(--radius);
+
+    .logo-container {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 20px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #f9f7fc 0%, #f3e5f5 100%);
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow);
       overflow: hidden;
-      background: #e9efed;
-      box-shadow: var(--shadow);
+      position: relative;
     }
-    .hero img{
-      width:100%;
-      height: 160px;
-      display:block;
-      object-fit: cover;
+
+    .logo-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      padding: 8px;
     }
-    .card{
-      background: var(--card);
+
+    .logo-placeholder {
+      font-size: 36px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--primary), var(--light-blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -1px;
+    }
+
+    .brand-title {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--deep-blue);
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-subtitle {
+      font-size: 15px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .main-card {
+      background: var(--card-bg);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: 16px;
       border: 1px solid var(--border);
+      overflow: hidden;
+      transition: box-shadow 0.3s ease;
     }
-    .title{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:10px;
-      margin-bottom: 12px;
+
+    .main-card:hover {
+      box-shadow: var(--shadow-hover);
     }
-    .title h1{
-      margin:0;
-      font-size: 18px;
-      font-weight: 900;
-    }
-    .pill{
-      background: rgba(26,174,85,.12);
-      color: var(--primary);
-      border: 1px solid rgba(26,174,85,.25);
-      border-radius: 999px;
-      padding: 6px 10px;
-      font-size: 12px;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-    .info{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
-    .row{
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 12px;
-      background: #fbfdfc;
-    }
-    .label{
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 4px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-    }
-    .valueBtn{
-      width:100%;
-      text-align:left;
-      background: transparent;
-      border: none;
-      padding: 0;
-      font-size: 16px;
-      font-weight: 800;
-      color: var(--text);
-      cursor: pointer;
-      line-height: 1.25;
-      word-break: break-word;
-    }
-    .valueBtn:active{opacity:.7}
-    .hint{
-      margin-top: 12px;
-      font-size: 13px;
-      color: var(--muted);
-      line-height: 1.45;
-    }
-    .actions{
-      margin-top: 14px;
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .btn{
-      flex: 1 1 180px;
-      border: none;
-      border-radius: 14px;
-      padding: 12px 14px;
-      font-weight: 800;
-      cursor:pointer;
-      box-shadow: 0 8px 18px rgba(16,42,38,.10);
-    }
-    .btnPrimary{
-      background: var(--primary);
+
+    .card-header {
+      background: linear-gradient(135deg, var(--primary), #5b1685);
+      padding: 24px 20px;
+      text-align: center;
       color: white;
     }
-    .btnGhost{
-      background: #ffffff;
-      border: 1px solid var(--border);
-      color: var(--text);
+
+    .card-header h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 6px;
     }
-    .toast{
+
+    .card-header p {
+      font-size: 13px;
+      opacity: 0.9;
+      font-weight: 500;
+    }
+
+    .card-body {
+      padding: 24px 20px;
+    }
+
+    ${missing ? `
+    .warning {
+      margin-bottom: 20px;
+      padding: 16px;
+      background: rgba(255, 193, 7, 0.1);
+      border-left: 4px solid #ffc107;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #6a4b00;
+      font-weight: 600;
+    }` : ""}
+
+    .detail-group {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .detail-item {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .detail-item:hover {
+      border-color: var(--primary);
+      background: linear-gradient(135deg, #f9f7fc 0%, #ffffff 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(106, 27, 154, 0.1);
+    }
+
+    .detail-item:active {
+      transform: translateY(0);
+    }
+
+    .detail-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .copy-hint {
+      font-size: 11px;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .detail-value {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      word-break: break-word;
+      user-select: none;
+    }
+
+    .actions {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 16px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: 'Montserrat', sans-serif;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), #5b1685);
+      color: white;
+      box-shadow: 0 4px 14px rgba(106, 27, 154, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(106, 27, 154, 0.4);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .instruction {
+      margin-top: 20px;
+      padding: 16px;
+      background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+      border-radius: 10px;
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      font-weight: 500;
+      border-left: 3px solid var(--secondary);
+    }
+
+    .footer {
+      text-align: center;
+      padding: 24px 20px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .footer-brand {
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .toast {
       position: fixed;
       left: 50%;
-      bottom: 18px;
-      transform: translateX(-50%);
-      background: rgba(16,42,38,.92);
-      color: #fff;
-      padding: 10px 14px;
-      border-radius: 999px;
-      font-size: 13px;
+      bottom: 24px;
+      transform: translateX(-50%) translateY(100px);
+      background: linear-gradient(135deg, var(--deep-blue), var(--primary));
+      color: white;
+      padding: 14px 24px;
+      border-radius: 50px;
+      font-size: 14px;
       font-weight: 700;
-      display:none;
-      max-width: calc(100% - 24px);
-      text-align:center;
+      display: none;
+      max-width: calc(100% - 40px);
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      animation: slideUp 0.3s ease forwards;
     }
-    .warn{
-      margin-top: 12px;
-      padding: 12px;
-      border-radius: 14px;
-      background: rgba(255,193,7,.12);
-      border: 1px solid rgba(255,193,7,.25);
-      color: #6a4b00;
-      font-size: 13px;
-      line-height: 1.45;
-      font-weight: 650;
+
+    .toast.show {
+      display: block;
     }
-    @media (max-width: 360px){
-      .hero img{height:140px}
-      .valueBtn{font-size:15px}
+
+    @keyframes slideUp {
+      to {
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 24px 16px 40px;
+      }
+
+      .brand-title {
+        font-size: 24px;
+      }
+
+      .logo-container {
+        width: 90px;
+        height: 90px;
+      }
+
+      .detail-value {
+        font-size: 15px;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="top">
-      <div class="logo" aria-label="Logo">
-        ${logoUrl ? `<img src="${esc(logoUrl)}" alt="${esc(brandName)} logo" />` : `<span style="font-weight:900;color:var(--primary)">${esc(brandName).slice(0,2)}</span>`}
+  <div class="container">
+    <header class="header">
+      <div class="logo-container">
+        ${logoUrl 
+          ? `<img src="${esc(logoUrl)}" alt="${esc(brandName)} Logo" />` 
+          : `<span class="logo-placeholder">MF</span>`
+        }
       </div>
-      <div class="brand">
-        <p class="name">${esc(brandName)} Donations</p>
-        <p class="sub">Tap any field to copy. Then transfer in your bank app.</p>
+      <h1 class="brand-title">${esc(brandName)}</h1>
+      <p class="brand-subtitle">Secure Donation Portal</p>
+    </header>
+
+    <div class="main-card">
+      <div class="card-header">
+        <h2>Bank Transfer Details</h2>
+        <p>Tap any field to copy instantly</p>
+      </div>
+
+      <div class="card-body">
+        ${missing ? `<div class="warning">⚠️ Configuration incomplete. Please contact the administrator to set up donation details.</div>` : ""}
+
+        <div class="detail-group">
+          <div class="detail-item" data-copy="${esc(bankName)}" data-label="Bank Name">
+            <div class="detail-label">
+              <span>Bank Name</span>
+              <span class="copy-hint">Tap to copy</span>
+            </div>
+            <div class="detail-value">${esc(bankName || "Not configured")}</div>
+          </div>
+
+          <div class="detail-item" data-copy="${esc(accountNumber)}" data-label="Account Number">
+            <div class="detail-label">
+              <span>Account Number</span>
+              <span class="copy-hint">Tap to copy</span>
+            </div>
+            <div class="detail-value">${esc(accountNumber || "Not configured")}</div>
+          </div>
+
+          <div class="detail-item" data-copy="${esc(accountName)}" data-label="Account Name">
+            <div class="detail-label">
+              <span>Account Name</span>
+              <span class="copy-hint">Tap to copy</span>
+            </div>
+            <div class="detail-value">${esc(accountName || "Not configured")}</div>
+          </div>
+
+          ${narration && narration.trim()
+            ? `<div class="detail-item" data-copy="${esc(narration.trim())}" data-label="Narration">
+                <div class="detail-label">
+                  <span>Narration</span>
+                  <span class="copy-hint">Tap to copy</span>
+                </div>
+                <div class="detail-value">${esc(narration.trim())}</div>
+              </div>`
+            : ""}
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" id="copyAll">Copy All Details</button>
+        </div>
+
+        <div class="instruction">
+          <strong>Instructions:</strong> After copying the details, open your banking app, select transfer, paste the account number, enter your donation amount, and complete the transaction.
+        </div>
       </div>
     </div>
 
-    ${heroUrl ? `<div class="hero"><img src="${esc(heroUrl)}" alt="${esc(brandName)}" /></div>` : ""}
-
-    <div class="card">
-      <div class="title">
-        <h1>Donation Account</h1>
-        <span class="pill">Secure • Manual Transfer</span>
-      </div>
-
-      ${missing ? `<div class="warn">Some donation details are missing on the server. Check your .env values and redeploy.</div>` : ""}
-
-      <div class="info">
-        <div class="row">
-          <div class="label">
-            <span>Bank Name</span>
-            <span>Tap to copy</span>
-          </div>
-          <button class="valueBtn" type="button" data-copy="${esc(bankName)}">${esc(bankName || "-")}</button>
-        </div>
-
-        <div class="row">
-          <div class="label">
-            <span>Account Number</span>
-            <span>Tap to copy</span>
-          </div>
-          <button class="valueBtn" type="button" data-copy="${esc(accountNumber)}">${esc(accountNumber || "-")}</button>
-        </div>
-
-        <div class="row">
-          <div class="label">
-            <span>Account Name</span>
-            <span>Tap to copy</span>
-          </div>
-          <button class="valueBtn" type="button" data-copy="${esc(accountName)}">${esc(accountName || "-")}</button>
-        </div>
-
-        ${narration && narration.trim()
-          ? `<div class="row">
-              <div class="label">
-                <span>Narration</span>
-                <span>Tap to copy</span>
-              </div>
-              <button class="valueBtn" type="button" data-copy="${esc(narration.trim())}">${esc(narration.trim())}</button>
-            </div>`
-          : ""}
-      </div>
-
-      <div class="actions">
-        <button class="btn btnPrimary" type="button" id="copyAll">Copy All Details</button>
-        <button class="btn btnGhost" type="button" id="share">Share</button>
-      </div>
-
-      <div class="hint">
-        After copying, open your bank app, paste the account number, enter the amount, and confirm the transfer.
-      </div>
-    </div>
+    <footer class="footer">
+      <p>Powered by <span class="footer-brand">${esc(brandName)}</span></p>
+    </footer>
   </div>
 
-  <div class="toast" id="toast">Copied</div>
+  <div class="toast" id="toast">Copied successfully</div>
 
   <script>
     const toast = document.getElementById("toast");
+    let toastTimer;
 
     function showToast(text) {
       toast.textContent = text;
-      toast.style.display = "block";
-      clearTimeout(window.__toastTimer);
-      window.__toastTimer = setTimeout(() => {
-        toast.style.display = "none";
-      }, 1600);
+      toast.classList.add("show");
+      
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 2000);
     }
 
     async function copyText(text) {
+      if (!text || !text.trim()) {
+        showToast("Nothing to copy");
+        return false;
+      }
+
       try {
         await navigator.clipboard.writeText(text);
         return true;
       } catch (e) {
-        // Fallback for older browsers
         try {
-          const ta = document.createElement("textarea");
-          ta.value = text;
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand("copy");
-          document.body.removeChild(ta);
-          return true;
+          const textarea = document.createElement("textarea");
+          textarea.value = text;
+          textarea.style.position = "fixed";
+          textarea.style.opacity = "0";
+          document.body.appendChild(textarea);
+          textarea.select();
+          const success = document.execCommand("copy");
+          document.body.removeChild(textarea);
+          return success;
         } catch (err) {
           return false;
         }
       }
     }
 
-    document.querySelectorAll("[data-copy]").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        const value = btn.getAttribute("data-copy") || "";
-        if (!value.trim()) return showToast("Nothing to copy");
-        const ok = await copyText(value);
-        showToast(ok ? "Copied" : "Copy failed");
+    document.querySelectorAll(".detail-item").forEach(item => {
+      item.addEventListener("click", async () => {
+        const value = item.getAttribute("data-copy");
+        const label = item.getAttribute("data-label");
+        
+        const success = await copyText(value);
+        showToast(success ? label + " copied!" : "Failed to copy");
       });
     });
 
     document.getElementById("copyAll").addEventListener("click", async () => {
-      const lines = [];
-      document.querySelectorAll("[data-copy]").forEach(el => {
-        const v = (el.getAttribute("data-copy") || "").trim();
-        if (v) lines.push(v);
+      const details = [];
+      
+      document.querySelectorAll(".detail-item").forEach(item => {
+        const value = item.getAttribute("data-copy");
+        const label = item.getAttribute("data-label");
+        
+        if (value && value.trim()) {
+          details.push(label.toUpperCase() + ": " + value);
+        }
       });
-      const text = lines.join("\\n");
-      const ok = await copyText(text);
-      showToast(ok ? "All copied" : "Copy failed");
-    });
 
-    document.getElementById("share").addEventListener("click", async () => {
-      const parts = [];
-      document.querySelectorAll("[data-copy]").forEach(el => {
-        const v = (el.getAttribute("data-copy") || "").trim();
-        if (v) parts.push(v);
-      });
-      const text = parts.join("\\n");
-
-      if (navigator.share) {
-        try {
-          await navigator.share({ title: "Donation Details", text });
-        } catch (e) {}
-      } else {
-        const ok = await copyText(text);
-        showToast(ok ? "Copied to share" : "Copy failed");
-      }
+      const text = details.join("\\n");
+      const success = await copyText(text);
+      showToast(success ? "All details copied!" : "Failed to copy");
     });
   </script>
 </body>
