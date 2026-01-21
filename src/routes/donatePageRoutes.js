@@ -421,94 +421,48 @@ router.get("/donate", (req, res) => {
 
   <div class="toast" id="toast">Copied successfully</div>
 
-  <script>
-    const toast = document.getElementById("toast");
-    let toastTimer;
-
-    function showToast(text) {
-      toast.textContent = text;
-      toast.classList.add("show");
-      
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => {
-        toast.classList.remove("show");
-      }, 2000);
+ <script>
+  async function copyText(text) {
+    if (!text || !text.trim() || text === "Not configured") {
+      showToast("Nothing to copy");
+      return false;
     }
 
-    async function copyText(text) {
-      if (!text || !text.trim() || text === "Not configured") {
-        showToast("Nothing to copy");
-        return false;
-      }
-
-      try {
+    // 1) Best: Clipboard API (works on HTTPS + modern browsers)
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(text);
         return true;
-      } catch (e) {
-        try {
-          const textarea = document.createElement("textarea");
-          textarea.value = text;
-          textarea.style.position = "fixed";
-          textarea.style.opacity = "0";
-          textarea.style.left = "-9999px";
-          document.body.appendChild(textarea);
-          textarea.focus();
-          textarea.select();
-          const success = document.execCommand("copy");
-          document.body.removeChild(textarea);
-          return success;
-        } catch (err) {
-          return false;
-        }
       }
+    } catch (e) {}
+
+    // 2) Fallback: execCommand (works on many browsers, not all)
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.top = "0";
+      textarea.style.left = "0";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      textarea.setSelectionRange(0, textarea.value.length); // important for iOS
+      const ok = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      if (ok) return true;
+    } catch (e) {}
+
+    // 3) Last resort: prompt (works everywhere)
+    try {
+      window.prompt("Copy this:", text);
+      return true;
+    } catch (e) {
+      return false;
     }
-
-    async function copyField(value, label) {
-      const success = await copyText(value);
-      if (success) {
-        showToast(label + " copied!");
-      } else {
-        showToast("Failed to copy");
-      }
-    }
-
-    document.getElementById("copyAll").addEventListener("click", async function(e) {
-      e.preventDefault();
-      
-      const bankName = "${esc(bankName).replace(/"/g, '\\"')}";
-      const accountNumber = "${esc(accountNumber).replace(/"/g, '\\"')}";
-      const accountName = "${esc(accountName).replace(/"/g, '\\"')}";
-      const narration = "${esc(narration).replace(/"/g, '\\"')}";
-      
-      const details = [];
-      
-      if (bankName && bankName !== "Not configured") {
-        details.push("BANK NAME: " + bankName);
-      }
-      if (accountNumber && accountNumber !== "Not configured") {
-        details.push("ACCOUNT NUMBER: " + accountNumber);
-      }
-      if (accountName && accountName !== "Not configured") {
-        details.push("ACCOUNT NAME: " + accountName);
-      }
-      if (narration && narration.trim()) {
-        details.push("NARRATION: " + narration);
-      }
-
-      if (details.length === 0) {
-        showToast("No details to copy");
-        return;
-      }
-
-      const text = details.join("\\n");
-      const success = await copyText(text);
-      if (success) {
-        showToast("All details copied!");
-      } else {
-        showToast("Failed to copy");
-      }
-    });
-  </script>
+  }
+</script>
 </body>
 </html>`;
 
