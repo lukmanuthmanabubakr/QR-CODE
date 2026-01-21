@@ -366,10 +366,10 @@ router.get("/donate", (req, res) => {
       </div>
 
       <div class="card-body">
-        ${missing ? `<div class="warning">⚠️ Configuration incomplete. Please contact the administrator to set up donation details.</div>` : ""}
+        ${missing ? `<div class="warning"> Configuration incomplete. Please contact the administrator to set up donation details.</div>` : ""}
 
         <div class="detail-group">
-          <div class="detail-item" data-copy="${esc(bankName)}" data-label="Bank Name">
+          <div class="detail-item" onclick="copyField('${esc(bankName)}', 'Bank Name')">
             <div class="detail-label">
               <span>Bank Name</span>
               <span class="copy-hint">Tap to copy</span>
@@ -377,7 +377,7 @@ router.get("/donate", (req, res) => {
             <div class="detail-value">${esc(bankName || "Not configured")}</div>
           </div>
 
-          <div class="detail-item" data-copy="${esc(accountNumber)}" data-label="Account Number">
+          <div class="detail-item" onclick="copyField('${esc(accountNumber)}', 'Account Number')">
             <div class="detail-label">
               <span>Account Number</span>
               <span class="copy-hint">Tap to copy</span>
@@ -385,7 +385,7 @@ router.get("/donate", (req, res) => {
             <div class="detail-value">${esc(accountNumber || "Not configured")}</div>
           </div>
 
-          <div class="detail-item" data-copy="${esc(accountName)}" data-label="Account Name">
+          <div class="detail-item" onclick="copyField('${esc(accountName)}', 'Account Name')">
             <div class="detail-label">
               <span>Account Name</span>
               <span class="copy-hint">Tap to copy</span>
@@ -394,7 +394,7 @@ router.get("/donate", (req, res) => {
           </div>
 
           ${narration && narration.trim()
-            ? `<div class="detail-item" data-copy="${esc(narration.trim())}" data-label="Narration">
+            ? `<div class="detail-item" onclick="copyField('${esc(narration.trim())}', 'Narration')">
                 <div class="detail-label">
                   <span>Narration</span>
                   <span class="copy-hint">Tap to copy</span>
@@ -436,7 +436,7 @@ router.get("/donate", (req, res) => {
     }
 
     async function copyText(text) {
-      if (!text || !text.trim()) {
+      if (!text || !text.trim() || text === "Not configured") {
         showToast("Nothing to copy");
         return false;
       }
@@ -450,7 +450,9 @@ router.get("/donate", (req, res) => {
           textarea.value = text;
           textarea.style.position = "fixed";
           textarea.style.opacity = "0";
+          textarea.style.left = "-9999px";
           document.body.appendChild(textarea);
+          textarea.focus();
           textarea.select();
           const success = document.execCommand("copy");
           document.body.removeChild(textarea);
@@ -461,38 +463,37 @@ router.get("/donate", (req, res) => {
       }
     }
 
-    document.querySelectorAll(".detail-item").forEach(item => {
-      item.addEventListener("click", async (e) => {
-        e.preventDefault();
-        const value = item.getAttribute("data-copy");
-        const label = item.getAttribute("data-label");
-        
-        if (!value || value === "Not configured") {
-          showToast("Nothing to copy");
-          return;
-        }
-        
-        const success = await copyText(value);
-        if (success) {
-          showToast(label + " copied!");
-        } else {
-          showToast("Failed to copy");
-        }
-      });
-    });
+    async function copyField(value, label) {
+      const success = await copyText(value);
+      if (success) {
+        showToast(label + " copied!");
+      } else {
+        showToast("Failed to copy");
+      }
+    }
 
-    document.getElementById("copyAll").addEventListener("click", async (e) => {
+    document.getElementById("copyAll").addEventListener("click", async function(e) {
       e.preventDefault();
+      
+      const bankName = "${esc(bankName).replace(/"/g, '\\"')}";
+      const accountNumber = "${esc(accountNumber).replace(/"/g, '\\"')}";
+      const accountName = "${esc(accountName).replace(/"/g, '\\"')}";
+      const narration = "${esc(narration).replace(/"/g, '\\"')}";
+      
       const details = [];
       
-      document.querySelectorAll(".detail-item").forEach(item => {
-        const value = item.getAttribute("data-copy");
-        const label = item.getAttribute("data-label");
-        
-        if (value && value.trim() && value !== "Not configured") {
-          details.push(label.toUpperCase() + ": " + value);
-        }
-      });
+      if (bankName && bankName !== "Not configured") {
+        details.push("BANK NAME: " + bankName);
+      }
+      if (accountNumber && accountNumber !== "Not configured") {
+        details.push("ACCOUNT NUMBER: " + accountNumber);
+      }
+      if (accountName && accountName !== "Not configured") {
+        details.push("ACCOUNT NAME: " + accountName);
+      }
+      if (narration && narration.trim()) {
+        details.push("NARRATION: " + narration);
+      }
 
       if (details.length === 0) {
         showToast("No details to copy");
