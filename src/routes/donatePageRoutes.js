@@ -30,6 +30,7 @@ router.get("/donate", (req, res) => {
   const narration = process.env.DONATION_NARRATION || "";
 
   const brandName = "MSSN FUTA Branch";
+  // Use route-based logo serving as fallback
   const logoUrl = process.env.BRAND_LOGO_URL || "";
 
   const missing =
@@ -461,30 +462,50 @@ router.get("/donate", (req, res) => {
     }
 
     document.querySelectorAll(".detail-item").forEach(item => {
-      item.addEventListener("click", async () => {
+      item.addEventListener("click", async (e) => {
+        e.preventDefault();
         const value = item.getAttribute("data-copy");
         const label = item.getAttribute("data-label");
         
+        if (!value || value === "Not configured") {
+          showToast("Nothing to copy");
+          return;
+        }
+        
         const success = await copyText(value);
-        showToast(success ? label + " copied!" : "Failed to copy");
+        if (success) {
+          showToast(label + " copied!");
+        } else {
+          showToast("Failed to copy");
+        }
       });
     });
 
-    document.getElementById("copyAll").addEventListener("click", async () => {
+    document.getElementById("copyAll").addEventListener("click", async (e) => {
+      e.preventDefault();
       const details = [];
       
       document.querySelectorAll(".detail-item").forEach(item => {
         const value = item.getAttribute("data-copy");
         const label = item.getAttribute("data-label");
         
-        if (value && value.trim()) {
+        if (value && value.trim() && value !== "Not configured") {
           details.push(label.toUpperCase() + ": " + value);
         }
       });
 
+      if (details.length === 0) {
+        showToast("No details to copy");
+        return;
+      }
+
       const text = details.join("\\n");
       const success = await copyText(text);
-      showToast(success ? "All details copied!" : "Failed to copy");
+      if (success) {
+        showToast("All details copied!");
+      } else {
+        showToast("Failed to copy");
+      }
     });
   </script>
 </body>
