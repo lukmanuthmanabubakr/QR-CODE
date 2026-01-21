@@ -3,6 +3,11 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const donationDetailsRoutes = require("./routes/donationDetailsRoutes");
+const donationQrRoutes = require("./routes/donationQrRoutes");
+const donatePageRoutes = require("./routes/donatePageRoutes");
+
+
 
 const app = express();
 
@@ -31,6 +36,11 @@ app.use(
 app.get("/health", (req, res) => {
   res.status(200).json({ success: true, status: "ok" });
 });
+app.use("/api", donationDetailsRoutes);
+app.use("/api", donationQrRoutes);
+app.use("/", donatePageRoutes);
+
+
 
 app.use((req, res) => {
   res.status(404).json({
