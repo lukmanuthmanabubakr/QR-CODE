@@ -33,7 +33,7 @@ app.use(
   })
 );
 
-app.get("/health", (req, res) => {
+app.get("/", (req, res) => {
   res.status(200).json({ success: true, status: "ok" });
 });
 app.use("/api", donationDetailsRoutes);
