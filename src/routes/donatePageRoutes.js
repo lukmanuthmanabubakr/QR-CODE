@@ -348,17 +348,6 @@ router.get("/donate", (req, res) => {
 </head>
 <body>
   <div class="container">
-    <header class="header">
-      <div class="logo-container">
-        ${logoUrl 
-          ? `<img src="${esc(logoUrl)}" alt="${esc(brandName)} Logo" />` 
-          : `<span class="logo-placeholder">MF</span>`
-        }
-      </div>
-      <h1 class="brand-title">${esc(brandName)}</h1>
-      <p class="brand-subtitle">Secure Donation Portal</p>
-    </header>
-
     <div class="main-card">
       <div class="card-header">
         <h2>Bank Transfer Details</h2>
